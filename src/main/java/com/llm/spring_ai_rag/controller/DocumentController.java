@@ -1,6 +1,7 @@
 package com.llm.spring_ai_rag.controller;
 
 import java.io.IOException;
+import java.util.List;
 
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -12,7 +13,13 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.llm.spring_ai_rag.document.DocumentStore;
 import com.llm.spring_ai_rag.dto.DocumentUploadResponse;
+import com.llm.spring_ai_rag.embedding.EmbeddedChunk;
+import com.llm.spring_ai_rag.embedding.EmbeddingService;
+import com.llm.spring_ai_rag.embedding.InMemoryVectorStore;
+import com.llm.spring_ai_rag.rag.TextChunkingService;
 import com.llm.spring_ai_rag.service.PdfService;
+
+import dev.langchain4j.data.segment.TextSegment;
 
 @RestController
 @RequestMapping("/api/documents")
@@ -22,9 +29,21 @@ public class DocumentController {
 
     private final DocumentStore documentStore;
 
-    public DocumentController(PdfService pdfService, DocumentStore documentStore){
+    private final TextChunkingService textChunkingService;
+
+    private final EmbeddingService embeddingService;
+
+    private final InMemoryVectorStore vectorStore;
+
+    public DocumentController(PdfService pdfService, DocumentStore documentStore,
+        TextChunkingService textChunkingService, EmbeddingService embeddingService,
+        InMemoryVectorStore vectorStore){
+
         this.pdfService = pdfService;
         this.documentStore = documentStore;
+        this.textChunkingService = textChunkingService;
+        this.embeddingService = embeddingService;
+        this.vectorStore = vectorStore;
     }
 
     @PostMapping(value="/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -34,6 +53,22 @@ public class DocumentController {
         documentStore.setDocumentText(extractedText);
 
         int pageCount = pdfService.getPageCount(file);
+
+        vectorStore.clear();
+
+        List<TextSegment> segments = textChunkingService.chunkText(extractedText);
+
+        System.out.println(
+                "Generated chunks: " + segments.size()
+            );
+
+        for(TextSegment segment : segments){
+            System.out.println(segment.text());
+            EmbeddedChunk embeddedChunk = new EmbeddedChunk(segment.text(), 
+                                                embeddingService.generEmbedding(segment));
+            
+            vectorStore.addChunk(embeddedChunk);
+        }
 
         return new DocumentUploadResponse(file.getOriginalFilename(),pageCount,extractedText.substring(
                     0,
