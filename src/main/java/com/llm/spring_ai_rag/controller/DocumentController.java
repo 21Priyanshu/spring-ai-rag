@@ -13,9 +13,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.llm.spring_ai_rag.document.DocumentStore;
 import com.llm.spring_ai_rag.dto.DocumentUploadResponse;
-import com.llm.spring_ai_rag.embedding.EmbeddedChunk;
+import com.llm.spring_ai_rag.embedding.DocumentChunk;
+import com.llm.spring_ai_rag.embedding.DocumentChunkRepository;
 import com.llm.spring_ai_rag.embedding.EmbeddingService;
 import com.llm.spring_ai_rag.embedding.InMemoryVectorStore;
+import com.llm.spring_ai_rag.embedding.VectorUtils;
 import com.llm.spring_ai_rag.rag.TextChunkingService;
 import com.llm.spring_ai_rag.service.PdfService;
 
@@ -35,15 +37,18 @@ public class DocumentController {
 
     private final InMemoryVectorStore vectorStore;
 
+    private final DocumentChunkRepository documentChunkRepository;
+
     public DocumentController(PdfService pdfService, DocumentStore documentStore,
         TextChunkingService textChunkingService, EmbeddingService embeddingService,
-        InMemoryVectorStore vectorStore){
+        InMemoryVectorStore vectorStore, DocumentChunkRepository documentChunkRepository){
 
         this.pdfService = pdfService;
         this.documentStore = documentStore;
         this.textChunkingService = textChunkingService;
         this.embeddingService = embeddingService;
         this.vectorStore = vectorStore;
+        this.documentChunkRepository = documentChunkRepository;
     }
 
     @PostMapping(value="/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -64,10 +69,14 @@ public class DocumentController {
 
         for(TextSegment segment : segments){
             System.out.println(segment.text());
-            EmbeddedChunk embeddedChunk = new EmbeddedChunk(segment.text(), 
-                                                embeddingService.generEmbedding(segment));
             
-            vectorStore.addChunk(embeddedChunk);
+            DocumentChunk chunkEntity = new DocumentChunk();
+
+            chunkEntity.setContent(segment.text());
+
+            chunkEntity.setEmbedding(VectorUtils.toVector(embeddingService.generEmbedding(segment)));
+
+            documentChunkRepository.save(chunkEntity);
         }
 
         return new DocumentUploadResponse(file.getOriginalFilename(),pageCount,extractedText.substring(

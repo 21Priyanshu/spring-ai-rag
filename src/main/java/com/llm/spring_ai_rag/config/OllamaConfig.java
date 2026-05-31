@@ -8,7 +8,6 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
-import dev.langchain4j.model.ollama.OllamaModel;
 
 @Configuration
 public class OllamaConfig {

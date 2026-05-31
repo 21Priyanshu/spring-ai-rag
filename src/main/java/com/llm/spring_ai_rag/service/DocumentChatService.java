@@ -4,9 +4,8 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
-import com.llm.spring_ai_rag.document.DocumentStore;
+import com.llm.spring_ai_rag.embedding.DocumentChunk;
 import com.llm.spring_ai_rag.rag.RetrievalService;
-import com.llm.spring_ai_rag.rag.RetrievedChunk;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
 
@@ -29,10 +28,10 @@ public class DocumentChatService {
 
         // String documentText = documentStore.getDocumentText();
 
-        List<RetrievedChunk> relevaChunks = retrievalService.retrieve(question, 3);
+        List<DocumentChunk> relevaChunks = retrievalService.retrieve(question, 3);
 
         String context = relevaChunks.stream()
-                                .map(RetrievedChunk::getText)
+                                .map(DocumentChunk::getContent)
                                 .reduce("", (a,b) -> a + "\n\n" + b);
 
         String prompt = """
